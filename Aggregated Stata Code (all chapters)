@@ -1,0 +1,617 @@
+*Chapter 4 - Concurrent validity analyses.
+
+*CFA and IRT were performed in Mplus and network analyses were performed in R. See separate files for code for these specific analses. 
+
+
+set maxvar 15000
+use "C:\Users\emccu\OneDrive - Simon Fraser University (1sfu)\Research\Papers\IP\First Author\1. Psychopathy Book\Datasets\Chapter 3 - Reliability and Validity.dta", clear
+
+
+
+rename I1 i1
+rename I2 i2
+rename I3 i3
+rename I4 i4
+rename Aff5 aff5
+rename Aff6 aff6
+rename Aff7 aff7
+rename Aff8 aff8
+rename L9 l9
+rename L10 l10
+rename L11 l11
+rename L12 l12
+rename L13 l13
+rename Ant14 ant14
+rename Ant15 ant15
+rename Ant16 ant16
+rename Ant17 ant17
+rename Ant18 ant18
+rename Unc19 unc19
+rename Unc20 unc20
+
+*because Stata does not recognize -99 as missing. 
+replace i1 = . if i1 == -99
+replace i2 = . if i2 == -99
+replace i3 = . if i3 == -99
+replace i4 = . if i4 == -99
+replace aff5 = . if aff5 == -99
+replace aff6 = . if aff6 == -99
+replace aff7 = . if aff7 == -99
+replace aff8 = . if aff8 == -99
+replace l9 = . if l9 == -99
+replace l10 = . if l10 == -99
+replace l11 = . if l11 == -99
+replace l12 = . if l12 == -99
+replace l13 = . if l13 == -99
+replace ant14 = . if ant14 == -99
+replace ant15 = . if ant15 == -99
+replace ant16 = . if ant16 == -99
+replace ant17 = . if ant17 == -99
+replace ant18 = . if ant18 == -99
+replace unc19 = . if unc19 == -99
+replace unc20 = . if unc20 == -99
+
+
+tab unc19
+
+replace PCL_ProRated = . if PCL_ProRated == -99
+replace CAPP_Total = . if CAPP_Total == -99
+replace MACI_PCS_RAW = . if MACI_PCS_RAW == -99
+replace Attachment_Score = . if Attachment_Score == -99
+replace Behavior_Score = . if Behavior_Score == -99
+replace Cognitive_Score = . if Cognitive_Score == -99
+replace Dominance_Score = . if Dominance_Score == -99
+replace Emotion_Score = . if Emotion_Score == -99
+replace Self_Score = . if Self_Score == -99
+
+
+
+egen CAPP_STD = std(CAPP_Total)
+egen PCS_STD = std(MACI_PCS_PRORATED) 
+
+
+pwcorr CAPP_Total PCL_ProRated, obs sig
+pwcorr MACI_PCS_PRORATED PCL_ProRated, obs sig
+
+
+pwcorr CAPP_Total MACI_PCS_PRORATED, obs sig
+
+
+
+pwcorr MACI_PCS_PRORATED PCL_ThreeFactor_ProRated PCL_FourFactor_ProRated Interpersonal_Facet_Prorated Affective_Facet_Prorated Lifestyle_Facet_Prorated Antisocial_Facet_Prorated, obs sig
+
+pwcorr CAPP_Total PCL_ThreeFactor_ProRated PCL_FourFactor_ProRated Interpersonal_Facet_Prorated Affective_Facet_Prorated Lifestyle_Facet_Prorated Antisocial_Facet_Prorated, obs sig
+
+
+twoway (scatter CAPP_STD PCL_ProRated, mcolor(gs0) msymbol(circle)) (scatter PCS_STD PCL_ProRated, mcolor(gray) msymbol(circle)) (lfit CAPP_STD PCL_ProRated, lcolor(gs0)) (lfit PCS_STD PCL_ProRated, lcolor(gs5)), xtitle("PCL:YV Total Score") ////
+legend(label(1 "CAPP-IRS (Standardized)") label(2 "MACI PCS (Standardized)") label(3 "CAPP-IRS Line of Best Fit") label(4 "MACI PCS Line of Best Fit")) graphregion(fcolor(white)) ylabel(,nogrid)
+
+
+
+
+*Chapter 5 - Predictive Validity Analyses.
+
+xtset Code_ wave
+
+*Convictions Figure. 
+reg convictions_rc i.age
+margins , at(age = (18(2)40)) post saving(file1, replace)
+reg incarceration_rc i.age
+margins , at(age = (18(2)40)) post saving(file4, replace)
+
+combomarginsplot file1 file4, scheme(plotplain) recastci(rarea) ciopts(color(*.5)) labels("1+ Convictions" "1+ Months Incarcerated", labsize(medium)) ytitle("Probability of Outcome", size(medium)) xtitle("Age", size(medium)) title("") graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(, nogrid) xlabel(18(2)40, nogrid) legend(position(6)rows(2) size(v. small)) name(con_traj, replace)
+
+
+graph export "Age Distributions.png", width(6000) replace
+
+
+
+gen TFM = Interpersonal_Facet_Prorated+Affective_Facet_Prorated+Lifestyle_Facet_Prorated
+
+
+replace wave = . if convictions == .
+
+gen convictions_rc = .
+replace convictions_rc = 1 if (convictions >= 1)
+replace convictions_rc = 0 if (convictions == 0)
+replace convictions_rc = . if (convictions == .)
+
+gen incarceration_rc = .
+replace incarceration_rc = 1 if (incarceration >= 1)
+replace incarceration_rc = 0 if (incarceration == 0)
+replace incarceration_rc = . if (incarceration == .)
+
+
+xtgee convictions_rc PCL_ProRated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) offset(offset)
+margins, at(PCL_ProRated = (5(5)35)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Conviction at Each Age", size(small)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(CON, replace) 
+
+xtgee incarceration_rc PCL_ProRated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust)
+margins, at(PCL_ProRated = (5(5)35)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Incarceration at Each Age", size(small)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(INC, replace) 
+
+gr combine CON INC, row(2) iscale(1) imargin(0 0 0 0) graphregion(color(white) lwidth(large))
+
+graph export "GEE Models - Total Scores.png", width(6000) replace
+
+
+xtgee convictions_rc PCL_High Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) offset(offset) eform
+xtgee incarceration_rc PCL_High Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) eform
+
+
+xtgee convictions_rc Interpersonal_Facet_Prorated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) offset(offset)
+margins, at(Interpersonal_Facet_Prorated = (0(1)8)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Conviction at Each Age", size(small)) xtitle("Interpersonal Factor Total Score", size(small)) xlabel(, nogrid) title("") name(CON_Int, replace) 
+
+xtgee incarceration_rc Interpersonal_Facet_Prorated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust)
+margins, at(Interpersonal_Facet_Prorated = (0(1)8)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Incarceration at Each Age", size(small)) xtitle("Interpersonal Factor Total Score", size(small)) xlabel(, nogrid) title("") name(INC_Int, replace) 
+
+gr combine CON_Int INC_Int, row(2) iscale(1) imargin(0 0 0 0) graphregion(color(white) lwidth(large))
+
+
+xtgee convictions_rc Affective_Facet_Prorated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) offset(offset)
+margins, at(Affective_Facet_Prorated = (0(1)8)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Conviction at Each Age", size(small)) xtitle("Affective Factor Total Score", size(small)) xlabel(, nogrid) title("") name(CON_Aff, replace) 
+
+xtgee incarceration_rc Affective_Facet_Prorated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust)
+margins, at(Affective_Facet_Prorated = (0(1)8)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Incarceration at Each Age", size(small)) xtitle("Affective Factor Total Score", size(small)) xlabel(, nogrid) title("") name(INC_Aff, replace) 
+
+gr combine CON_Aff INC_Aff, row(2) iscale(1) imargin(0 0 0 0) graphregion(color(white) lwidth(large))
+
+
+xtgee convictions_rc Lifestyle_Facet_Prorated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) offset(offset)
+margins, at(Lifestyle_Facet_Prorated = (0(2)10)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Conviction at Each Age", size(small)) xtitle("Lifestyle Factor Total Score", size(small)) xlabel(, nogrid) title("") name(CON_L, replace) 
+
+xtgee incarceration_rc Lifestyle_Facet_Prorated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust)
+margins, at(Lifestyle_Facet_Prorated = (0(2)10)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Incarceration at Each Age", size(small)) xtitle("Lifestyle Factor Total Score", size(small)) xlabel(, nogrid) title("") name(INC_L, replace) 
+
+gr combine CON_L INC_L, row(2) iscale(1) imargin(0 0 0 0) graphregion(color(white) lwidth(large))
+
+
+xtgee convictions_rc Antisocial_Facet_Prorated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) offset(offset)
+margins, at(Antisocial_Facet_Prorated = (0(2)10)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Conviction at Each Age", size(small)) xtitle("Antisocial Factor Total Score", size(small)) xlabel(, nogrid) title("") name(CON_Ant, replace) 
+
+xtgee incarceration_rc Antisocial_Facet_Prorated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust)
+margins, at(Antisocial_Facet_Prorated = (0(2)10)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Incarceration at Each Age", size(small)) xtitle("Antisocial Factor Total Score", size(small)) xlabel(, nogrid) title("") name(INC_Ant, replace) 
+
+gr combine CON_Ant INC_Ant, row(2) iscale(1) imargin(0 0 0 0) graphregion(color(white) lwidth(large))
+
+
+
+xtgee convictions_rc PCL_CoreProRated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) offset(offset)
+margins, at(PCL_CoreProRated = (4(2)20)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Conviction at Each Age", size(small)) xtitle("Core PCL:YV Traits Total Score", size(small)) xlabel(, nogrid) title("") name(CON_Core, replace) 
+
+xtgee incarceration_rc PCL_CoreProRated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust)
+margins, at(PCL_CoreProRated = (4(2)20)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.50, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Prob. of Incarceration at Each Age", size(small)) xtitle("Core PCL:YV Traits Total Score", size(small)) xlabel(, nogrid) title("") name(INC_Core, replace) 
+
+gr combine CON_Core INC_Core, row(2) iscale(1) imargin(0 0 0 0) graphregion(color(white) lwidth(large))
+
+
+
+
+///////////////////////////////////
+INTERACTION ANALYSIS
+///////////////////////////////////
+
+
+xtgee convictions_rc c.PCL_ProRated##i.Gender Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School LeftHome_Early i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) offset(offset)
+margins, at(c.PCL_ProRated = (5(5)35) Gender = (1 2)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.60, nogrid) plot1opts(lwidth(medthick)) plot2opts(lpattern(dash) lwidth(medthick)) legend(on order(3 "Male Participants" 4 "Female Participants") position(6)rows(1)) ytitle("Prob. of Conviction at Each Age", size(vsmall)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(CON_Gen, replace) 
+
+
+xtgee incarceration_rc c.PCL_ProRated##i.Gender Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School LeftHome_Early i.Ethnicity_RC, family(binomial) link(logit) corr(AR1) vce(robust) 
+margins, at(c.PCL_ProRated = (5(5)35) Gender = (1 2)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.60, nogrid) plot1opts(lwidth(medthick)) plot2opts(lpattern(dash) lwidth(medthick)) legend(on order(3 "Male Participants" 4 "Female Participants") position(6)rows(1)) ytitle("Prob. of Incarceration at Each Age", size(vsmall)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(INC_Gen, replace) 
+
+
+gr combine CON_Gen INC_Gen, row(2) iscale(1) imargin(0 0 0 0) graphregion(color(white) lwidth(large))
+
+
+xtgee convictions_rc c.PCL_ProRated##i.Ethnicity_RC Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School LeftHome_Early i.Gender, family(binomial) link(logit) corr(AR1) vce(robust) offset(offset)
+margins, at(c.PCL_ProRated = (5(5)35) Ethnicity_RC = (1 2 3)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.60, nogrid) plot1opts(lwidth(medthick)) plot2opts(lpattern(dash) lwidth(medthick)) legend(on order(4 "White Participants" 5 "Indigenous Participants" 6 "Non-Indigenous Participants") position(6)rows(1)) ytitle("Prob. of Conviction at Each Age", size(vsmall)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(CON_Eth, replace) 
+
+
+xtgee incarceration_rc c.PCL_ProRated##i.Ethnicity_RC Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School LeftHome_Early i.Gender, family(binomial) link(logit) corr(AR1) vce(robust) 
+margins, at(c.PCL_ProRated = (5(5)35) Ethnicity_RC = (1 2 3)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(0.0(0.10)0.60, nogrid) plot1opts(lwidth(medthick)) plot2opts(lpattern(dash) lwidth(medthick)) legend(on order(4 "White Participants" 5 "Indigenous Participants" 6 "Non-Indigenous Participants") position(6)rows(1)) ytitle("Prob. of Incarceration at Each Age", size(vsmall)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(INC_Eth, replace) 
+
+
+gr combine CON_Eth INC_Eth, row(2) iscale(1) imargin(0 0 0 0) graphregion(color(white) lwidth(large))
+
+
+
+
+*Chapter 6: Relationship between psychopathy and social/health outcomes. 
+
+
+*Social Environment.
+
+summarize EA_ISC
+
+summarize PCL_ProRated
+
+summarize Age_CRNA_EA
+
+regress EA_ISC PCL_ProRated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC
+
+
+margins, at(PCL_ProRated = (5(5)35)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) ylabel(, nogrid) graphregion(color(white)) bgcolor(white) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("CRNA Informal Social Control Scal", size(small)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(SocEnv, replace) 
+
+graph export "Social Environment.png", width(6000) replace
+
+regress EA_ISC i.PCL_High
+
+
+
+
+
+regress PrisPosCe PCL_Final Emerging_Adulthood_Custody Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC
+margins, at(PCL_Final = (5(5)35))
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.2)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(, nogrid) ytitle("Prison CSC Centrality (Ages 18-23)", size(small)) xtitle("PCL:YV Test Scores", size(small)) xlabel(, nogrid) title("") name(PCLSD, replace)
+
+
+
+regress PrisConCe PCL_Final Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC
+margins, at(PCL_Final = (5(5)35))
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.2)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(, nogrid) ytitle("Prison Conflict Centrality (Ages 18-23)", size(small)) xtitle("PCL:YV Test Scores", size(small)) xlabel(, nogrid) title("") name(PCLSD, replace)
+
+
+
+
+logit Sub_RC PCL_ProRated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, or
+margins, at(PCL_ProRated = (5(5)35)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(.4(.2)1, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Substance Use Issues", size(small)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(SocEnv, replace) 
+
+logit Sub_RC PCL_High, or
+
+
+logit Deceased PCL_ProRated Family_Dysfunction_SCALE SubstanceUse_Versatility_SCALE Positive_Self_Identity_SCALE i.Phys_Abuse i.Attend_School i.LeftHome_Early i.Gender i.Ethnicity_RC, or
+margins, at(PCL_ProRated = (5(5)35)) 
+marginsplot, scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.25)) graphregion(fcolor(white)) graphregion(color(white)) bgcolor(white) ylabel(.0(.1).4, nogrid) plot1opts(lwidth(medthick)) legend(position(6)rows(1)) ytitle("Early Mortality", size(small)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(SocEnv, replace) 
+
+logit Deceased PCL_High, or
+
+
+
+
+
+
+*Chapter 7: Mediation analyses. 
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+*CRNA Model.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+*Need correlations and SDs for the R Power analysis. 
+
+correlate PCL_Final EA_ISC Con_3yr
+
+summarize PCL_Final EA_ISC Con_3yr
+
+
+*PHASE 1 - PROPENSITY MODEL VERSUS BASELINE MODEL OF CONTROLS.
+*BASELINE W. CONTROLS ONLY.
+sem (Gender -> Con_3yr, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> Con_3yr, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> Con_3yr, ), nocapslatent
+estat eqgof
+
+*ADDING PCL.
+sem (Gender -> Con_3yr, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> Con_3yr, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> Con_3yr, ), nocapslatent
+estat eqgof
+
+
+
+*PHASE 2 - ADDING ISC->CONVICTIONS.
+*BASELINE W. CONTROLS ONLY.
+sem (Gender -> Con_3yr, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> Con_3yr, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> Con_3yr, ), nocapslatent
+estat eqgof
+
+
+*ADDING ISC.
+sem (Gender -> Con_3yr, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> Con_3yr, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> Con_3yr, ) (EA_ISC -> Con_3yr), nocapslatent
+estat eqgof
+
+*PHASE 3 - MEDIATION MODEL. 
+sem (Gender -> Con_3yr, ) (Gender -> EA_ISC, ) (CRNA_Age -> EA_ISC, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> EA_ISC, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> EA_ISC, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> EA_ISC, ) (PCL_Final -> Con_3yr, ) (EA_ISC -> Con_3yr, ) (FamDysf -> EA_ISC, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> EA_ISC, ) (Youth_Convictions -> Con_3yr, ), nocapslatent
+*Gives the total effect. 
+estat teffects
+estat eqgof
+estimates store modelB
+
+*Likelihood ratio test/*Footnote - did PCL improve the explained variance in ISC?. 
+sem (Gender -> Con_3yr, ) (Gender -> EA_ISC, ) (CRNA_Age -> EA_ISC, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> EA_ISC, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> EA_ISC, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> Con_3yr, ) (EA_ISC -> Con_3yr, ) (FamDysf -> EA_ISC, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> EA_ISC, ) (Youth_Convictions -> Con_3yr, ), nocapslatent
+estat teffects
+estat eqgof
+estimates store modelA
+lrtest modelA modelB
+
+/* bootstrap standard errors for indirect effects */
+capture program drop indir
+program indir, rclass
+  version 14.1
+  sem (Gender -> Con_3yr, ) (Gender -> EA_ISC, ) (CRNA_Age -> EA_ISC, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> EA_ISC, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> EA_ISC, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> EA_ISC, ) (PCL_Final -> Con_3yr, ) (EA_ISC -> Con_3yr, ) (FamDysf -> EA_ISC, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> EA_ISC, ) (Youth_Convictions -> Con_3yr, ),  nocapslatent 
+  estat teffects
+  return scalar tot_indir = el(r(indirect),1,5)
+  nlcom ///
+  (via_EA_ISC: _b[EA_ISC:PCL_Final]*_b[Con_3yr:EA_ISC])
+  return scalar via_EA_ISC = el(r(b),1,1)
+  end
+
+bootstrap totindir=r(tot_indir) via_EA_ISC=r(via_EA_ISC) ///
+, seed(691) reps(1000): indir
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+*Network model
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+sem (Gender -> PrisConCe) (Gender -> EaCon) (PCL_Final -> EaCon, ) (PrisConCe -> EaCon, ) (Emerging_Adulthood_Custody -> PrisConCe),  nocapslatent 
+estat teffects
+estat eqgof
+estimates store modelA
+
+
+sem (Gender -> PrisConCe) (Gender -> EaCon) (PCL_Final -> PrisConCe, ) (PCL_Final -> EaCon, ) (PrisConCe -> EaCon, ) (Emerging_Adulthood_Custody -> PrisConCe),  nocapslatent 
+estat teffects
+estat eqgof
+estimates store modelB
+lrtest modelA modelB
+
+
+sem (Gender -> Con_3yr, ) (Gender -> EA_ISC, ) (CRNA_Age -> EA_ISC, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> EA_ISC, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> EA_ISC, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> Con_3yr, ) (EA_ISC -> Con_3yr, ) (FamDysf -> EA_ISC, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> EA_ISC, ) (Youth_Convictions -> Con_3yr, ), nocapslatent
+estat teffects
+estat eqgof
+estimates store modelA
+
+
+/* bootstrap standard errors for indirect effects */
+capture program drop indir
+program indir, rclass
+  version 14.1
+  sem (Gender -> PrisConCe) (Gender -> EaCon) (PCL_Final -> PrisConCe, ) (PCL_Final -> EaCon, ) (PrisConCe -> EaCon, ) (Emerging_Adulthood_Custody -> PrisConCe),  nocapslatent method(mlmv)
+  estat teffects
+  return scalar tot_indir = el(r(indirect),1,5)
+  nlcom ///
+  (via_PrisConCe: _b[PrisConCe:PCL_Final]*_b[EaCon:PrisConCe])
+  return scalar via_PrisConCe = el(r(b),1,1)
+  end
+
+bootstrap totindir=r(tot_indir) via_PrisConCe=r(via_PrisConCe) ///
+, seed(691) reps(1000): indir
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+*SUB USE ANALYSIS.
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+*Need correlations and SDs for the R Power analysis. 
+
+correlate PCL_Final Sub_EA Con_3Yr
+
+*ADDING Sub Use.
+sem (Gender -> Con_3Yr, ) (CRNA_Age_FirstEA -> Con_3Yr, ) (Indigenous -> Con_3Yr, ) (NonIndigenous -> Con_3Yr, ) (PCL_Final -> Con_3Yr, ) (FamDysf -> Con_3Yr, ) (Youth_Convictions -> Con_3Yr, ) (Sub_EA -> Con_3Yr), nocapslatent
+estat eqgof
+
+
+
+*PHASE 3 - MEDIATION MODEL. 
+sem (Gender -> Con_3yr, ) (Gender -> EA_ISC, ) (CRNA_Age -> EA_ISC, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> EA_ISC, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> EA_ISC, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> EA_ISC, ) (PCL_Final -> Con_3yr, ) (EA_ISC -> Con_3yr, ) (FamDysf -> EA_ISC, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> EA_ISC, ) (Youth_Convictions -> Con_3yr, ), nocapslatent
+*Gives the total effect. 
+estat teffects
+estat eqgof
+estimates store modelB
+
+*Likelihood ratio test/*Footnote - did PCL improve the explained variance in ISC?. 
+sem (Gender -> Con_3yr, ) (Gender -> EA_ISC, ) (CRNA_Age -> EA_ISC, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> EA_ISC, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> EA_ISC, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> Con_3yr, ) (EA_ISC -> Con_3yr, ) (FamDysf -> EA_ISC, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> EA_ISC, ) (Youth_Convictions -> Con_3yr, ), nocapslatent
+estat teffects
+estat eqgof
+estimates store modelA
+lrtest modelA modelB
+
+/* bootstrap standard errors for indirect effects */
+capture program drop indir
+program indir, rclass
+  version 14.1
+  sem (Gender -> Con_3yr, ) (Gender -> EA_ISC, ) (CRNA_Age -> EA_ISC, ) (CRNA_Age -> Con_3yr, ) (Indigenous -> EA_ISC, ) (Indigenous -> Con_3yr, ) (NonIndigenous -> EA_ISC, ) (NonIndigenous -> Con_3yr, ) (PCL_Final -> EA_ISC, ) (PCL_Final -> Con_3yr, ) (EA_ISC -> Con_3yr, ) (FamDysf -> EA_ISC, ) (FamDysf -> Con_3yr, ) (Youth_Convictions -> EA_ISC, ) (Youth_Convictions -> Con_3yr, ),  nocapslatent 
+  estat teffects
+  return scalar tot_indir = el(r(indirect),1,5)
+  nlcom ///
+  (via_EA_ISC: _b[EA_ISC:PCL_Final]*_b[Con_3yr:EA_ISC])
+  return scalar via_EA_ISC = el(r(b),1,1)
+  end
+
+bootstrap totindir=r(tot_indir) via_EA_ISC=r(via_EA_ISC) ///
+, seed(691) reps(1000): indir
+
+
+
+*Chapter 8. 
+*Informal Social Control moderation analyses.
+
+xtset Code_ wave
+
+gen offset = log(exposure)
+
+xtgee convictions PCL_Final i.Gender i.Ethnicity_RC YouthCon_ln FamDysf EA_ISC CRNA_AgeFirst_Avg, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+
+*Interaction. 
+outreg2 using Model1, see excel: xtgee convictions i.Gender i.Ethnicity_RC YouthCon_ln FamDysf c.PCL_Final_Centered##c.EA_ISC_Centered CRNA_AgeFirst_Avg, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+
+
+*Dimensional Plot .
+
+xtgee convictions i.Gender i.Ethnicity_RC YouthCon_ln FamDysf i.PCL_HighRC##c.EA_ISC CRNA_AgeFirst_Avg, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+margins, at(EA_ISC = (0(3)15) PCL_HighRC = (1 2))
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) plot1opts(lwidth(medthick)) plot2opts(lwidth(medthick)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) legend(on order(1 "Low PCL:YV Score" 2 "High PCL:YV Score") position(6)rows(1) size(vsmall)) ylabel(, nogrid) ytitle("Rate of Convictions", size(small)) xtitle("CRNA Informal Social Control Scale", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+
+
+xtgee convictions i.Gender i.Ethnicity_RC YouthCon_ln FamDysf i.PCL_SD##c.EA_ISC CRNA_AgeFirst_Avg, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+margins, at(EA_ISC = (0(3)15) PCL_SD = (0 2))
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) plot1opts(lwidth(medthick)) plot2opts(lwidth(medthick)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) legend(on order(0 "Low PCL:YV Score" 2 "High PCL:YV Score") position(6)rows(1) size(vsmall)) ylabel(, nogrid) ytitle("Rate of Convictions", size(small)) xtitle("CRNA Informal Social Control Scale", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+
+xtgee convictions i.Gender i.Ethnicity_RC YouthCon_ln FamDysf c.PCL_Final##i.ISC_SD CRNA_AgeFirst_Avg, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+margins, at(PCL_Final = (10(5)30) ISC_SD = (0 2))
+marginsplot , scheme(meta) recast(line) recastci(rarea) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) legend(on order(1 "Low ISC" 2 "High ISC") position(6)rows(1) size(vsmall)) ylabel(, nogrid) ytitle("Rate of Convictions", size(small)) xtitle("PCL:YV Test Scores", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+
+*POS PRIS CRIM NET.
+xtgee convictions i.Gender i.Ethnicity_RC c.PCL_Final##c.PrisPosCe, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+
+xtgee convictions i.Gender i.Ethnicity_RC i.PCL_HighRC##c.PrisPosCe, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+margins, at(PrisPosCe = (0(10)50) PCL_HighRC = (1 2))
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) plot1opts(lwidth(medthick)) plot2opts(lwidth(medthick)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) legend(on order(1 "Low PCL:YV Score" 2 "High PCL:YV Score") position(6)rows(1) size(vsmall)) ylabel(, nogrid) ytitle("Rate of Convictions", size(small)) xtitle("Prison CSC Centrality (Ages 18-23)", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+
+
+xtgee convictions i.Gender i.Ethnicity_RC i.PCL_SD##c.PrisPosCe, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+margins, at(PrisPosCe = (0(10)50) PCL_SD = (1 3))
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) plot1opts(lwidth(medthick)) plot2opts(lwidth(medthick)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) legend(on order(1 "Low PCL:YV Score" 3 "High PCL:YV Score") position(6)rows(1) size(vsmall)) ylabel(, nogrid) ytitle("Rate of Convictions", size(small)) xtitle("Prison CSC Centrality (Ages 18-23)", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+
+
+*NEG PRIS CRIM NET.
+xtgee convictions i.Gender i.Ethnicity_RC c.PCL_Final##c.PrisConCe, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+
+xtgee convictions i.Gender i.Ethnicity_RC i.PCL_HighRC##c.PrisConCe, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+margins, at(PrisConCe = (0(1)9) PCL_HighRC = (1 2))
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) plot1opts(lwidth(medthick)) plot2opts(lwidth(medthick)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) legend(on order(1 "Low PCL:YV Score" 2 "High PCL:YV Score") position(6)rows(1) size(vsmall)) ylabel(, nogrid) ytitle("Rate of Convictions", size(small)) xtitle("Prison Conflict Centrality (Ages 18-23)", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+
+
+*CRNA SUB USE. 
+xtgee convictions i.Gender i.Ethnicity_RC c.PCL_Final##i.Sub_RC, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+
+xtgee convictions PCL_HighRC i.Gender i.Ethnicity_RC i.Sub_RC, family(gaussian) link(identity) corr(AR1) offset(offset) vce(robust)
+margins, at(Sub_RC = (0 1) PCL_HighRC = (1 2))
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) plot1opts(lwidth(medthick)) plot2opts(lwidth(medthick)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) legend(on order(1 "Low PCL:YV Score" 2 "High PCL:YV Score") position(6)rows(1) size(vsmall)) ylabel(, nogrid) ytitle("Rate of Convictions", size(small)) xtitle("CRNA Substance Use Issues", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+
+
+*Chapter 9. 
+
+
+graph bar (mean) post_sec_rate_12, over(DOB_Year_Categories_Rev) scheme(white_ptol) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0 1500 3000 4500 6000, nogrid labsize(vsmall)) blabel(bar, size(vsmall)) title("") ytitle("Rate of Post-Secondary Education", size(vsmall)) asyvars bargap(20) bar(1, fintensity(inten50)) bar(2, fintensity(inten60)) bar(3, fintensity(inten70)) bar(4, fintensity(inten80)) legend(position(6)row(1)) name(postsec, replace)
+graph bar (mean) youth_crime_guilt_12, over(DOB_Year_Categories_Rev) scheme(white_ptol) bar(1, fintensity(inten80)) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0 2000 4000 6000 8000, nogrid labsize(vsmall)) blabel(bar, size(vsmall)) title("") ytitle("Youth Crime Rate", size(vsmall)) asyvars bargap(20) bar(1, fintensity(inten50)) bar(2, fintensity(inten60)) bar(3, fintensity(inten70)) bar(4, fintensity(inten80)) legend(position(6)row(1)) name(crime, replace)
+graph bar (mean) avg_mother_age_12, over(DOB_Year_Categories_Rev) scheme(white_ptol) bar(1, fintensity(inten80)) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0 10 20 30 40, nogrid labsize(vsmall)) blabel(bar, size(vsmall)) title("") ytitle("Mother's Age at First Child", size(vsmall)) asyvars bargap(20) bar(1, fintensity(inten50)) bar(2, fintensity(inten60)) bar(3, fintensity(inten70)) bar(4, fintensity(inten80)) legend(position(6)row(1)) name(mother, replace)
+graph bar (mean) unemployment_perce_12, over(DOB_Year_Categories_Rev) scheme(white_ptol) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0 3 6 9 12, nogrid labsize(vsmall)) blabel(bar, size(vsmall)) title("") ytitle("Percent Unemployed", size(vsmall)) asyvars bargap(20) bar(1, fintensity(inten50)) bar(2, fintensity(inten60)) bar(3, fintensity(inten70)) bar(4, fintensity(inten80)) legend(position(6)row(1)) name(unemployment, replace)
+
+gr combine crime postsec mother unemployment, title("Province of BC Macrohistorical Environments at Age 12", size(small)) col(2) iscale(.65) imargin(0 0 0 0) graphregion(color(white) lwidth(large))
+
+
+
+
+*BIRTH COHORT.
+
+graph bar (mean) PCL_Final, over(Birth_Cohort) scheme(white_ptol) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0(10)40, nogrid labsize(vsmall)) blabel(bar, size(vsmall)) title("") ytitle("PCL:YV Total Score", size(vsmall)) asyvars bargap(20) bar(1, fintensity(inten50)) bar(2, fintensity(inten60)) bar(3, fintensity(inten70)) bar(4, fintensity(inten80)) legend(position(6)row(1)) name(postsec, replace)
+
+graph bar (mean) convictions, over(Birth_Cohort) scheme(white_ptol) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0(.25)2, nogrid labsize(vsmall)) blabel(bar, size(vsmall)) title("") ytitle("Average Yearly Convictions", size(vsmall)) asyvars bargap(20) bar(1, fintensity(inten50)) bar(2, fintensity(inten60)) bar(3, fintensity(inten70)) bar(4, fintensity(inten80)) legend(position(6)row(1)) name(postsec, replace)
+
+*Interval.
+xtgee convictions PCL_Final DOB_Year i.Gender i.Ethnicity_RC EA_ISC YouthCon_ln FamDysf CRNA_AgeFirst_Avg, family(poisson) corr(AR1) offset(offset) vce(robust)
+xtgee convictions c.PCL_Final##c.DOB_Year i.Gender i.Ethnicity_RC EA_ISC YouthCon_ln FamDysf CRNA_AgeFirst_Avg, family(poisson) corr(AR1) offset(offset) vce(robust)
+
+margins, at(PCL_Final = (5(5)35) DOB_Year = (1979 1981 1983 1985 1987 1989 1991 1993 1995 1997)) 
+marginsplot , scheme(plotplain) recast(line) noci graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0.0(0.5)1.5, nogrid) legend(on order(1 "1979" 2 "1981" 3 "1983" 4 "1985" 5 "1987" 6 "1989" 7 "1991" 8 "1993" 9 "1995" 10 "1997") position(6)rows(1) size(vsmall))  ytitle("Rate of Convictions per Year", size(small)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+xtgee convictions c.PCL_Final##c.DOB_Year i.Gender i.Ethnicity_RC EA_ISC YouthCon_ln FamDysf CRNA_AgeFirst_Avg, family(poisson) corr(AR1) offset(offset) vce(robust)
+
+margins, at(PCL_Final = (5(5)35) DOB_Year = (1981 1985 1989 1993 1997)) 
+marginsplot , scheme(plotplain) recast(line) noci graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0.0(0.5)1.5, nogrid) legend(on order(1 "1981" 2 "1985" 3 "1989" 4 "1993" 5 "1997") position(6)rows(1) size(vsmall))  ytitle("Rate of Convictions per Year", size(small)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+*Cohort Groupings. 
+
+xtgee convictions PCL_Final ib4.Birth_Cohort i.Gender i.Ethnicity_RC EA_ISC YouthCon_ln FamDysf CRNA_AgeFirst_Avg, family(poisson) corr(AR1) offset(offset) vce(robust)
+
+xtgee convictions c.PCL_Final##i.Birth_Cohort i.Gender i.Ethnicity_RC EA_ISC YouthCon_ln FamDysf CRNA_AgeFirst_Avg, family(poisson) corr(AR1) offset(offset) vce(robust)
+margins, at(PCL_Final = (5(5)35) Birth_Cohort = (1 2 3)) 
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.95)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0.0(0.5)1.5, nogrid) legend(on order(1 "1979-1983" 2 "1984-1988" 3 "1989-1993") position(6)rows(1) size(vsmall))  ytitle("Rate of Convictions per Year", size(small)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+
+
+*PERIOD EFFECT.
+
+graph bar (mean) PCL_Final, over(YJ_Cohort) scheme(white_ptol) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0(10)40, nogrid labsize(vsmall)) blabel(bar, size(vsmall)) title("") ytitle("PCL:YV Total Score", size(vsmall)) asyvars bargap(20) bar(1, fintensity(inten50)) bar(2, fintensity(inten60)) legend(position(6)row(1)) name(postsec, replace)
+
+graph bar (mean) convictions, over(YJ_Cohort) scheme(white_ptol) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0(.25)2, nogrid labsize(vsmall)) blabel(bar, size(vsmall)) title("") ytitle("Average Yearly Convictions", size(vsmall)) asyvars bargap(20) bar(1, fintensity(inten50)) bar(2, fintensity(inten60)) legend(position(6)row(1)) name(postsec, replace)
+
+
+
+xtgee convictions PCL_Final i.YJ_Cohort i.Gender i.Ethnicity_RC EA_ISC YouthCon_ln FamDysf CRNA_AgeFirst_Avg, family(poisson) corr(AR1) offset(offset) vce(robust)
+
+xtgee convictions c.PCL_Final##i.YJ_Cohort i.Gender i.Ethnicity_RC EA_ISC YouthCon_ln FamDysf CRNA_AgeFirst_Avg, family(poisson) corr(AR1) offset(offset) vce(robust)
+margins, at(PCL_Final = (5(5)35) YJ_Cohort = (1 2)) 
+marginsplot , scheme(plotplain) recast(line) recastci(rarea) ciopts(color(*.5)) graphregion(fcolor(white)) graphregion(color(white) lwidth(large)) bgcolor(white) ylabel(0.0(0.5)1.5, nogrid) legend(on order(1 "Young Offenders Act" 2 "Youth Criminal Justice Act") position(6)rows(1) size(vsmall))  ytitle("Rate of Convictions per Year", size(small)) xtitle("PCL:YV Total Score", size(small)) xlabel(, nogrid) title("") name(ISCSD, replace)
+
+
+*Chapter 10
+
+gen age = wave+11
+gen inc_months = incarceration/30
+gen age2 = age*age
+
+xtset Code_ wave
+
+global id Code_
+global t wave
+global ylist convictions
+global xlist incarceration age age2
+
+
+describe $id $t $ylist $xlist
+summarize $id $t $ylist $xlist
+
+* Set data as panel data
+sort $id $t
+xtset $id $t
+xtdescribe
+*xtsum describe between-person and within-individual variability. 
+xtsum $id $t $ylist $xlist
+
+*Model 1. 
+reg D.($ylist l.$xlist), noconstant cluster(Code_)
+*Model 2. 
+reg D.($ylist l2.$xlist), noconstant cluster(Code_)
+
+
+
+use "C:\Users\emccu\OneDrive - Simon Fraser University (1sfu)\Research\Papers\IP\First Author\1. Psychopathy Book\Datasets\Chapter 10\Chapter 10 - High PCL Only (LF).dta", clear
+
+gen age = wave+11
+gen inc_months = incarceration/30
+gen age2 = age*age
+
+xtset Code_ wave
+
+global id Code_
+global t wave
+global ylist convictions
+global xlist incarceration age age2
+
+
+describe $id $t $ylist $xlist
+summarize $id $t $ylist $xlist
+
+* Set data as panel data
+sort $id $t
+xtset $id $t
+xtdescribe
+*xtsum describe between-person and within-individual variability. 
+xtsum $id $t $ylist $xlist
+
+*Model 1. 
+reg D.($ylist l.$xlist), noconstant cluster(Code_)
+*Model 2. 
+reg D.($ylist l2.$xlist), noconstant cluster(Code_)
+
+
+
+
