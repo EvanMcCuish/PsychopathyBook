@@ -135,4 +135,40 @@ CATEGORICAL ARE U1-U20;
 ANALYSIS:
 TYPE = EFA 1 4;
 
+TITLE: Test for unidimensionality
+DATA: FILE IS "C:\Users\emccu\OneDrive - Simon Fraser University (1sfu)\MPlus\IRT.csv";
+VARIABLE: NAMES ARE x1-x20;
+Missing is x1-x20 (-99);
+Categorical is x1-x20;
+ANALYSIS: 
+ESTIMATOR = WLSMV;
+MODEL: 
+LFACTOR BY x1* x2* x3* x4* x5* x6* x7* x8* x9* x10* x11* x12* x13*
+ x14* x15* x16* x17* x18* x19* x20*;
+ x2 WITH x1;
+LFACTOR @1;
+OUTPUT: SAMP RESIDUAL CINTERVAL TECH4 STAND(STDYX) MOD(All 4) ;
+
+
+
+TITLE: IRT - Graded Response Model
+DATA: FILE IS "C:\Users\emccu\OneDrive - Simon Fraser University (1sfu)\MPlus\IRT.csv";
+VARIABLE: NAMES ARE u1-u20;
+MISSING ARE u1-u20 (-99);
+CATEGORICAL ARE U1-U20;
+ANALYSIS: 
+ESTIMATOR = MLR;
+MODEL: 
+f BY u1-u20*;
+f@1;
+SAVEDATA: 
+FILE IS regress.dat; SAVE = FSCORES;
+OUTPUT: 
+TECH1 TECH8 ;
+PLOT:
+TYPE = PLOT2 PLOT3;
+
+
+
+!You know it is GRM because there is no 'gpcm' after "CATEGORICAL"
 
