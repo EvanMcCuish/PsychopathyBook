@@ -1,0 +1,138 @@
+*Chapter 4 CFA Models.
+
+TITLE: CFA of PCL FFM (CORRELATED);
+DATA: FILE IS "C:\Users\emccu\OneDrive - Simon Fraser University (1sfu)\MPlus\CFA.csv";
+VARIABLE: NAMES ARE x1-x18;
+Categorical is x1-x18; 
+Missing is x1-x18 (-99);
+ANALYSIS: 
+ESTIMATOR = WLSMV;
+MODEL: f1 BY x1-x4; 
+f2 BY x5-x8; 
+f3 BY x9-x13; 
+f4 BY x14-x18;
+x2 WITH x1;
+OUTPUT: MODINDICES (ALL);
+
+
+
+!x10 WITH X4;
+!x2 WITH x1;
+!x8 WITH x7;
+!x12 WITH x9;
+!x18 WITH x16;
+
+
+TITLE: CFA of PCL FFM (Hierarchical);
+DATA: FILE IS "C:\Users\emccu\OneDrive - Simon Fraser University (1sfu)\MPlus\CFA.csv";
+VARIABLE: NAMES ARE x1-x18;
+Categorical is x1-x18; 
+Missing is x1-x18 (-99);
+ANALYSIS: 
+ESTIMATOR = WLSMV;
+MODEL: f1 BY x1-x4; 
+f2 BY x5-x8; 
+f3 BY x9-x13; 
+f4 BY x14-x18;
+p1 BY f1-f4;
+x2 WITH x1;
+OUTPUT: MODINDICES (ALL);
+
+
+!MI = allow for correlated error terms. Cite Curran and Bauer.
+!Chi square = sig. 
+!RMSEA estimate = .056 90% CI contains .05; p. RMSEA <= .05 = .095.
+!CFI = .925
+!TLI = .908
+!SRMR = .063
+
+!x10 WITH X4;
+!x2 WITH x1;
+!x8 WITH x7;
+!x12 WITH x9;
+!x18 WITH x16;
+
+
+
+TITLE: CFA of PCL TFM (HIERARCHICAL);
+DATA: FILE IS "C:\Users\emccu\OneDrive - Simon Fraser University (1sfu)\MPlus\CFA.csv";
+VARIABLE: NAMES ARE x1-x13;
+Categorical is x1-x13; 
+Missing is x1-x13 (-99);
+ANALYSIS: 
+ESTIMATOR = WLSMV;
+MODEL: f1 BY x1-x4; 
+f2 BY x5-x8; 
+f3 BY x9-x13; 
+p1 BY f1-f3;
+x2 WITH x1;
+OUTPUT: MODINDICES (ALL);
+
+
+!MI = allow for correlated error terms. Cite Curran and Bauer.
+!Chi square = sig. 
+!RMSEA estimate = .054 90% CI contains .05; p. RMSEA <= .05 = .255.
+!CFI = .959
+!TLI = .945
+!SRMR = .050
+
+
+
+!x10 WITH X4;
+!x2 WITH x1;
+!x8 WITH x7;
+!x12 WITH x9;
+
+
+
+
+
+
+#DIFF TEST.
+
+TITLE: FFM DIFF TEST (CORRELATED);
+DATA: FILE IS "C:\Users\emccu\Documents\Mplus Data\Mplus CFA(Full Sample).csv";
+VARIABLE: NAMES ARE x1-x18;
+Categorical is x1-x18; 
+Missing is x1-x18 (-99);
+ANALYSIS: 
+ESTIMATOR = WLSMV;
+MODEL: f1 BY x1-x4; 
+f2 BY x5-x8; 
+f3 BY x9-x13; 
+f4 BY x14-x18;
+x2 WITH x1;
+SAVEDATA:
+DIFFTEST IS C:\Users\emccu\Documents\Mplus Data\DIFF.dat; 
+
+!Step 2. 
+TITLE: FFM DIFF TEST (HIERARCHICAL);
+DATA: FILE IS "C:\Users\emccu\Documents\Mplus Data\Mplus CFA(Full Sample).csv";
+VARIABLE: NAMES ARE x1-x18;
+Categorical is x1-x18; 
+Missing is x1-x18 (-99);
+ANALYSIS: 
+ESTIMATOR = WLSMV;
+DIFFTEST IS "C:\Users\emccu\Documents\Mplus Data\DIFF.dat"; 
+MODEL: f1 BY x1-x4; 
+f2 BY x5-x8; 
+f3 BY x9-x13; 
+f4 BY x14-x18;
+p BY f1-f4;
+x2 WITH x1;
+
+
+
+/////////////////////////////////////////////////////
+
+Item-response theory analyses
+
+TITLE: EFA - Checking Eigenvalues
+DATA: FILE IS "C:\Users\emccu\OneDrive - Simon Fraser University (1sfu)\MPlus\IRT.csv";
+VARIABLE: NAMES ARE u1-u20;
+MISSING ARE u1-u20 (-99);
+CATEGORICAL ARE U1-U20;
+ANALYSIS:
+TYPE = EFA 1 4;
+
+
