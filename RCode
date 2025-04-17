@@ -1,0 +1,63 @@
+*R Code for Network analysis.
+
+library(readxl)
+PCL_Network <- read_excel("PCL Network.xlsx")
+View(PCL_Network)
+
+library("qgraph")
+library("bootnet")
+library("networktools")
+
+groups <- factor(c(
+  rep("Interpersonal",4),
+  rep("Affective",4),
+  rep("Lifestyle",5),
+  rep("Antisocial",5),
+  rep("Unclassified",2)))
+
+
+Network <- estimateNetwork(PCL_Network, default = "EBICglasso", tuning = 0.01)
+plot(Network, layout = "spring", groups = groups, palette = "gray", legend=FALSE)
+
+centralityPlot(Network, scale = c("z-scores"), include = c("Strength", "Betweenness", "Closeness"))
+
+#Bootstrapped diff tests go here. Need to first confirm reliability through stability indices. 
+
+Results1 <- bootnet(Network, nBoots = 2500, statistics = c("Strength", "Betweenness", "Closeness"), type = "case", nCores = 6)
+corStability(Results1)
+plot(Results1, statistics = c("Strength", "Betweenness", "Closeness"))
+
+
+
+Results2 <- bootnet(Network, nBoots = 2500, statistics = c("Strength", "Betweenness", "Closeness"), nCores = 6)
+
+# Plot significant differences (alpha = 0.05) of node strength:
+plot(Results2, statistics = c("Strength"), plot = "difference")
+
+# Plot significant differences (alpha = 0.05) of node closeness:
+plot(Results2, "Closeness", plot = "difference")
+
+# Plot significant differences (alpha = 0.05) of node betweenness:
+plot(Results2, "Betweenness", plot = "difference")
+
+
+
+
+
+
+
+
+
+
+# Plot significant differences (alpha = 0.05) of edges:
+plot(Results2, "edge", plot = "difference", onlyNonZero = TRUE,
+     order = "sample")
+
+
+
+Results2 <- bootnet(Network, nBoots = 500, statistics = c("expectedInfluence", "strength", "closeness", "betweenness"), type = "case", nCores = 6)
+
+plot(Results2)
+corStability(Results2)
+
+
